@@ -1,0 +1,82 @@
+#include <stdio.h>
+#include "hardware/i2c.h"
+#include "pico/stdlib.h"
+
+// Definición de la dirección I2C del SSD1306
+#define SSD1306_ADDR 0x3C
+#define WIDTH 128
+#define HEIGHT 64
+
+// Inicialización de la pantalla
+void oled_init() {
+    uint8_t init_cmds[] = {
+        0xAE,             // Apaga la pantalla
+        0xD5, 0x80,       // Configuración de frecuencia de oscilador
+        0xA8, HEIGHT - 1, // Configuración de multiplexado
+        0xD3, 0x00,       // Desplazamiento de pantalla
+        0x40,             // Establece línea de inicio
+        0x8D, 0x14,       // Activar carga de regulador
+        0x20, 0x00,       // Modo de direccionamiento horizontal
+        0xA1,             // Configura la orientación horizontal (invertida)
+        0xC8,             // Configura la orientación vertical (invertida)
+        0xDA, 0x12,       // Configuración de pines
+        0x81, 0xCF,       // Configuración de brillo
+        0xD9, 0xF1,       // Ajuste de pre-carga
+        0xDB, 0x40,       // Configuración de nivel de salida VCOMH
+        0xA4,             // Habilitar salida GDDRAM
+        0xA6,             // Modo normal (sin invertir)
+        0xAF              // Enciende la pantalla
+    };
+    for (size_t i = 0; i < sizeof(init_cmds); i++) {
+        i2c_write_blocking(i2c0, SSD1306_ADDR, &init_cmds[i], 1, false);
+    }
+}
+
+// Limpiar pantalla
+void oled_clear() {
+    uint8_t clear_cmd = 0x00;
+    for (uint16_t i = 0; i < WIDTH * (HEIGHT / 8); i++) {
+        i2c_write_blocking(i2c0, SSD1306_ADDR, &clear_cmd, 1, false);
+    }
+}
+
+// Configuración de la posición del cursor en la pantalla
+void oled_set_cursor(uint8_t col, uint8_t row) {
+    uint8_t cmds[] = {
+        0x21, col, WIDTH - 1,   // Columnas de inicio y fin
+        0x22, row, (HEIGHT / 8) - 1 // Páginas de inicio y fin
+    };
+    for (size_t i = 0; i < sizeof(cmds); i++) {
+        i2c_write_blocking(i2c0, SSD1306_ADDR, &cmds[i], 1, false);
+    }
+}
+
+// Enviar un carácter 
+void oled_write_char(char c) {
+    // Definir una fuente de 5x7 aquí o en otro archivo
+    // Asumimos aquí una función oled_write_data() que envía cada columna del carácter
+}
+
+// Mostrar un mensaje
+void oled_display_text(const char *text) {
+    while (*text) {
+        oled_write_char(*text++);
+    }
+}
+
+// Configuración principal
+int main() {
+    stdio_init_all();
+    i2c_init(i2c0, 400 * 1000); // 400 kHz
+    gpio_set_function(4, GPIO_FUNC_I2C);  // Pines I2C
+    gpio_set_function(5, GPIO_FUNC_I2C);
+    gpio_pull_up(4);
+    gpio_pull_up(5);
+
+    oled_init();         // Inicializar pantalla
+    oled_clear();        // Limpiar pantalla
+    oled_set_cursor(0, 0);  // Posicionar cursor en inicio
+    oled_display_text("Luis Angel Gonzalez Orihuela");
+
+    return 0;
+}
